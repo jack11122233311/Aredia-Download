@@ -8,7 +8,8 @@ services:
     container_name: arediadownload-web
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      # Change the host port (left) via PORT env variable in Portainer, defaults to 9421
+      - "${PORT:-9421}:8000"
     volumes:
       - ./downloads:/downloads
       - ./config:/config
