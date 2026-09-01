@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.env
+.venv/
+env/
+venv/
+
+# ArediaDownload runtime & user storage
+/downloads/*
+!/downloads/.gitkeep
+/config/*
+!/config/.gitkeep
+cookies.txt
+*.part
+*.ytdl
+
+# Logs & temp
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  arediadownload:
+    image: arediadownload:latest
+    container_name: arediadownload-web
+    restart: unless-stopped
+    ports:
+      # Change the host port (left side) to ANY random port you want (e.g. 8765, 9421, 51820)
+      - "${PORT:-8765}:8000"
+    volumes:
+      # Update host directory paths to match your system (or leave as named/relative volumes)
+      - ./downloads:/downloads
+      - ./config:/config
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - MAX_CONCURRENT_DOWNLOADS=2
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
