@@ -11,7 +11,8 @@ services:
       # Change the host port (left) via PORT env variable in Portainer, defaults to 9421
       - "${PORT:-9421}:8000"
     volumes:
-      - ./downloads:/downloads
+      # Mount host media directory
+      - /mnt/Media/downloads:/downloads
       - ./config:/config
     environment:
       - PUID=1000

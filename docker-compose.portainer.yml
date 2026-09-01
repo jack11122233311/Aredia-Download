@@ -6,11 +6,11 @@ services:
     container_name: arediadownload-web
     restart: unless-stopped
     ports:
-      # Change the host port (left side) to ANY random port you want (e.g. 8765, 9421, 51820)
-      - "${PORT:-8765}:8000"
+      # Change the host port (left side) via PORT env variable, defaults to 9421
+      - "${PORT:-9421}:8000"
     volumes:
-      # Update host directory paths to match your system (or leave as named/relative volumes)
-      - ./downloads:/downloads
+      # Host media storage directory
+      - /mnt/Media/downloads:/downloads
       - ./config:/config
     environment:
       - PUID=1000
