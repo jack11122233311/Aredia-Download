@@ -190,8 +190,6 @@ class DownloadWorker:
         ydl_opts: Dict[str, Any] = {
             "outtmpl": out_template,
             "logger": cli_logger,
-            "js_runtimes": {"node": {}},
-            "remote_components": ["ejs:github"],
             "progress_hooks": [self._progress_hook],
             "postprocessor_hooks": [self._postprocessor_hook],
             "quiet": False,
@@ -200,6 +198,17 @@ class DownloadWorker:
             "ignoreerrors": False,
             "overwrites": True,
         }
+
+        # Dynamic JS Runtime Detection
+        import shutil
+        js_runtimes = {}
+        if shutil.which("node"):
+            js_runtimes["node"] = {}
+        if shutil.which("deno"):
+            js_runtimes["deno"] = {}
+        if js_runtimes:
+            ydl_opts["js_runtimes"] = js_runtimes
+            ydl_opts["remote_components"] = ["ejs:github"]
 
         # Handle noplaylist flag (Feature 1)
         if self.custom_args.get("noplaylist", False):

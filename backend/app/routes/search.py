@@ -36,14 +36,21 @@ async def search_media(req: SearchRequest):
 
     search_target = f"ytsearch{req.limit}:{query}"
     
+    import shutil
     ydl_opts = {
         "extract_flat": "in_playlist",
         "skip_download": True,
-        "js_runtimes": {"node": {}},
-        "remote_components": ["ejs:github"],
         "quiet": True,
         "no_warnings": True,
     }
+    js_runtimes = {}
+    if shutil.which("node"):
+        js_runtimes["node"] = {}
+    if shutil.which("deno"):
+        js_runtimes["deno"] = {}
+    if js_runtimes:
+        ydl_opts["js_runtimes"] = js_runtimes
+        ydl_opts["remote_components"] = ["ejs:github"]
     
     if COOKIES_FILE.exists() and COOKIES_FILE.stat().st_size > 0:
         ydl_opts["cookiefile"] = str(COOKIES_FILE)

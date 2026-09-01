@@ -16,6 +16,7 @@ fi
 # Ensure permissions on download and config directories
 mkdir -p /downloads /config
 chown -R "$PUID:$PGID" /downloads /config /app 2>/dev/null || true
+chmod -R 777 /downloads /config 2>/dev/null || true
 
 # If command starts with uvicorn or python, execute with gosu as ytdl user
 if [ "$(id -u)" = '0' ]; then

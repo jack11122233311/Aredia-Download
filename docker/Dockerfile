@@ -1,9 +1,10 @@
 FROM python:3.11-slim
 
-# Install system dependencies: ffmpeg, ca-certificates, curl, atomicparsley
+# Install system dependencies: ffmpeg, nodejs (for yt-dlp JS challenge solver), ca-certificates, curl, gosu
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       ffmpeg \
+      nodejs \
       ca-certificates \
       curl \
       gosu \

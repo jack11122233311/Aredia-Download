@@ -98,7 +98,7 @@ class FilesManager {
               <span>Play</span>
             </button>
           ` : ''}
-          <a href="/api/files/download/${encodeURIComponent(file.name)}" download class="btn-subtle btn-sm" style="text-decoration: none;" title="Save to local machine">
+          <a href="/api/files/download/${encodeURIComponent(file.relative_path || file.name)}" download class="btn-subtle btn-sm" style="text-decoration: none;" title="Save to local machine">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
           </a>
           <button class="btn-subtle btn-sm delete-file-btn" style="color: var(--accent-rose);" title="Delete File">
@@ -116,7 +116,7 @@ class FilesManager {
       // Delete button event
       const delBtn = card.querySelector('.delete-file-btn');
       if (delBtn) {
-        delBtn.addEventListener('click', () => this.deleteFile(file.name));
+        delBtn.addEventListener('click', () => this.deleteFile(file.relative_path || file.name));
       }
 
       this.container.appendChild(card);
@@ -126,7 +126,7 @@ class FilesManager {
   openPlayer(file) {
     if (!this.playerDialog) return;
     this.playerTitle.textContent = file.name;
-    const streamUrl = `/api/files/stream/${encodeURIComponent(file.name)}`;
+    const streamUrl = `/api/files/stream/${encodeURIComponent(file.relative_path || file.name)}`;
 
     if (file.media_type === 'video') {
       this.playerContainer.innerHTML = `

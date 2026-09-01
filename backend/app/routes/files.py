@@ -3,6 +3,7 @@ import mimetypes
 import logging
 from pathlib import Path
 from typing import Optional
+from urllib.parse import unquote
 from fastapi import APIRouter, HTTPException, Header, Response, status
 from fastapi.responses import FileResponse, StreamingResponse
 
@@ -23,10 +24,15 @@ def get_media_type(filepath: Path) -> str:
     return "other"
 
 def resolve_safe_path(rel_path: str) -> Path:
-    # Ensure resolved path is strictly inside DOWNLOAD_DIR
-    target = (DOWNLOAD_DIR / rel_path).resolve()
-    if not str(target).startswith(str(DOWNLOAD_DIR.resolve())):
-        raise HTTPException(status_code=403, detail="Access denied")
+    # URL decode path and strip leading slashes
+    clean_rel = unquote(rel_path).lstrip("/\\")
+    base = DOWNLOAD_DIR.resolve()
+    target = (DOWNLOAD_DIR / clean_rel).resolve()
+    try:
+        target.relative_to(base)
+    except ValueError:
+        logger.warning(f"Path traversal blocked for: {rel_path}")
+        raise HTTPException(status_code=403, detail="Access denied: path outside downloads directory")
     return target
 
 @router.get("")
@@ -37,18 +43,22 @@ async def list_downloaded_files():
     files = []
     for item in DOWNLOAD_DIR.rglob("*"):
         if item.is_file() and not item.name.endswith(".part") and not item.name.endswith(".ytdl"):
-            stat = item.stat()
-            rel_name = str(item.relative_to(DOWNLOAD_DIR)).replace("\\", "/")
-            files.append({
-                "name": item.name,
-                "relative_path": rel_name,
-                "subfolder": str(item.parent.relative_to(DOWNLOAD_DIR)).replace("\\", "/") if item.parent != DOWNLOAD_DIR else "",
-                "size": stat.st_size,
-                "size_str": format_bytes(stat.st_size),
-                "modified": stat.st_mtime,
-                "extension": item.suffix.lstrip(".").lower(),
-                "media_type": get_media_type(item)
-            })
+            try:
+                stat = item.stat()
+                rel_name = str(item.relative_to(DOWNLOAD_DIR)).replace("\\", "/")
+                sub = str(item.parent.relative_to(DOWNLOAD_DIR)).replace("\\", "/") if item.parent != DOWNLOAD_DIR else ""
+                files.append({
+                    "name": item.name,
+                    "relative_path": rel_name,
+                    "subfolder": sub,
+                    "size": stat.st_size,
+                    "size_str": format_bytes(stat.st_size),
+                    "modified": stat.st_mtime,
+                    "extension": item.suffix.lstrip(".").lower(),
+                    "media_type": get_media_type(item)
+                })
+            except Exception as e:
+                logger.error(f"Error reading metadata for {item}: {e}")
 
     # Sort newest first
     files.sort(key=lambda x: x["modified"], reverse=True)
@@ -59,14 +69,22 @@ async def delete_file(rel_path: str):
     target = resolve_safe_path(rel_path)
     
     if not target.exists() or not target.is_file():
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(status_code=404, detail="File not found on disk")
         
     try:
-        target.unlink()
+        try:
+            target.unlink()
+        except PermissionError:
+            # Attempt to modify permissions and retry
+            os.chmod(target, 0o666)
+            target.unlink()
         return {"status": "deleted", "filename": target.name}
     except Exception as e:
-        logger.error(f"Failed to delete file {rel_path}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to delete file: {e}")
+        logger.error(f"Failed to delete file {target.name}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete file: {str(e)}. Check container volume write permissions."
+        )
 
 @router.get("/download/{rel_path:path}")
 async def download_file(rel_path: str):
@@ -76,7 +94,7 @@ async def download_file(rel_path: str):
         raise HTTPException(status_code=404, detail="File not found")
 
     return FileResponse(
-        path=target,
+        path=str(target),
         filename=target.name,
         media_type="application/octet-stream"
     )
@@ -95,7 +113,7 @@ async def stream_media(rel_path: str, range: Optional[str] = Header(None)):
         mime_type = "video/mp4" if get_media_type(target) == "video" else "audio/mpeg"
 
     if not range:
-        return FileResponse(path=target, media_type=mime_type)
+        return FileResponse(path=str(target), media_type=mime_type)
 
     try:
         range_val = range.replace("bytes=", "").split("-")
@@ -126,4 +144,4 @@ async def stream_media(rel_path: str, range: Optional[str] = Header(None)):
         return StreamingResponse(iter_file(), status_code=status.HTTP_206_PARTIAL_CONTENT, headers=headers)
     except Exception as e:
         logger.error(f"Streaming error for {target.name}: {e}")
-        return FileResponse(path=target, media_type=mime_type)
+        return FileResponse(path=str(target), media_type=mime_type)
