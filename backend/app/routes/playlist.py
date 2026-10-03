@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 import yt_dlp
 
-from app.config import COOKIES_FILE
+from app.ytdlp_config import common_ytdlp_options
 from app.downloader import format_seconds
 
 logger = logging.getLogger(__name__)
@@ -20,24 +20,14 @@ async def inspect_playlist(req: PlaylistInspectRequest):
     if not req.url.strip():
         raise HTTPException(status_code=400, detail="URL cannot be empty")
 
-    import shutil
-    ydl_opts = {
+    ydl_opts = common_ytdlp_options()
+    ydl_opts.update({
         "extract_flat": "in_playlist",
         "skip_download": True,
         "playlist_items": f"1-{req.limit}",
         "quiet": True,
         "no_warnings": True,
-    }
-    js_runtimes = {}
-    if shutil.which("node"):
-        js_runtimes["node"] = {}
-    if shutil.which("deno"):
-        js_runtimes["deno"] = {}
-    if js_runtimes:
-        ydl_opts["js_runtimes"] = js_runtimes
-        ydl_opts["remote_components"] = ["ejs:github"]
-    if COOKIES_FILE.exists() and COOKIES_FILE.stat().st_size > 0:
-        ydl_opts["cookiefile"] = str(COOKIES_FILE)
+    })
 
     def _extract():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:

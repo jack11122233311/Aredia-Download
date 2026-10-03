@@ -6,7 +6,8 @@ from typing import Dict, Any, Callable, Optional, List
 from pathlib import Path
 import yt_dlp
 
-from app.config import DOWNLOAD_DIR, COOKIES_FILE, load_settings
+from app.config import DOWNLOAD_DIR, load_settings
+from app.ytdlp_config import common_ytdlp_options
 from app.presets import get_preset_options, PRESETS
 
 logger = logging.getLogger(__name__)
@@ -187,7 +188,8 @@ class DownloadWorker:
         out_template = str(target_dir / "%(title)s [%(id)s].%(ext)s")
         cli_logger = CLIStreamLogger(self.task_id, self.on_log)
 
-        ydl_opts: Dict[str, Any] = {
+        ydl_opts = common_ytdlp_options()
+        ydl_opts.update({
             "outtmpl": out_template,
             "logger": cli_logger,
             "progress_hooks": [self._progress_hook],
@@ -197,18 +199,7 @@ class DownloadWorker:
             "nocheckcertificate": False,
             "ignoreerrors": False,
             "overwrites": True,
-        }
-
-        # Dynamic JS Runtime Detection
-        import shutil
-        js_runtimes = {}
-        if shutil.which("node"):
-            js_runtimes["node"] = {}
-        if shutil.which("deno"):
-            js_runtimes["deno"] = {}
-        if js_runtimes:
-            ydl_opts["js_runtimes"] = js_runtimes
-            ydl_opts["remote_components"] = ["ejs:github"]
+        })
 
         # Handle noplaylist flag (Feature 1)
         if self.custom_args.get("noplaylist", False):
@@ -274,10 +265,6 @@ class DownloadWorker:
             parsed_rate = self._parse_rate_limit(rate_limit)
             if parsed_rate:
                 ydl_opts["ratelimit"] = parsed_rate
-
-        # Cookies
-        if COOKIES_FILE.exists() and COOKIES_FILE.stat().st_size > 0:
-            ydl_opts["cookiefile"] = str(COOKIES_FILE)
 
         # SponsorBlock
         use_sponsorblock = self.custom_args.get("sponsorblock", settings.get("enable_sponsorblock", True))

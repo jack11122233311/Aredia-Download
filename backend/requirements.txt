@@ -1,6 +1,7 @@
 fastapi>=0.110.0
 uvicorn[standard]>=0.28.0
-yt-dlp>=2024.03.10
+yt-dlp>=2026.08.19
+bgutil-ytdlp-pot-provider==2.0.1
 sse-starlette>=2.0.0
 mutagen>=1.47.0
 requests>=2.31.0

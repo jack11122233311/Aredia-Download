@@ -44,13 +44,57 @@ docker compose -f docker-compose.dev.yml up --build
 docker compose up -d --build
 ```
 
+Production Compose runs Aredia and `pot-provider` together. The Python plugin
+`bgutil-ytdlp-pot-provider==2.0.1` and companion image
+`brainicism/bgutil-ytdlp-pot-provider:2.0.1` use the same version, with
+`yt-dlp>=2026.08.19`. Downloads, search and playlist inspection share the provider,
+cookie-file and Node.js/Deno runtime settings. Uploaded cookies remain in
+`./config/cookies.txt`; JavaScript challenge solving still uses the installed
+runtimes and `ejs:github`.
+
+Aredia reaches `http://pot-provider:4416` on the Compose network. The provider
+has no published host port. Its `/ping` healthcheck runs using Node.js, and
+Aredia waits for it to become healthy at startup. The development Compose file
+includes the same companion service.
+
+### Updating an existing server
+
+Run these commands from your existing repository checkout:
+
+```bash
+git pull --ff-only
+docker compose config --quiet
+docker compose pull pot-provider
+docker compose up -d --build
+docker compose ps
+docker compose logs --tail=100 pot-provider arediadownload-app
+```
+
+The rebuild installs the updated Python dependencies. Keep your existing config
+directory and downloads mount; production defaults to `/mnt/Media/downloads`.
+If using a Git-backed Portainer stack, pull/redeploy the stack with image rebuilding
+enabled. A failed provider healthcheck prevents Aredia from starting; inspect the
+provider logs and its outbound network access before retrying.
+
+For native Windows development, start the companion separately with a loopback
+port mapping:
+
+```powershell
+docker run -d --init --name aredia-pot-provider --restart unless-stopped -p 127.0.0.1:4416:4416 brainicism/bgutil-ytdlp-pot-provider:2.0.1
+.\start_dev.ps1
+```
+
+Native execution defaults to `http://127.0.0.1:4416`; set `POT_PROVIDER_URL` to use
+another provider address. See the [provider documentation](https://github.com/Brainicism/bgutil-ytdlp-pot-provider/tree/2.0.1)
+for details. PO tokens do not guarantee that YouTube will accept every request.
+
 ---
 
 ## 📁 Volume Mounts & Persistence
 
 | Host Path | Container Path | Purpose |
 |---|---|---|
-| `./downloads` | `/downloads` | Persistent storage for all completed video/audio files. |
+| `/mnt/Media/downloads` (production), `./downloads` (development) | `/downloads` | Persistent storage for all completed video/audio files. |
 | `./config` | `/config` | Stores `settings.json` and authentication `cookies.txt`. |
 
 ---
@@ -62,6 +106,7 @@ You can customize runtime variables in `docker-compose.yml`:
 | Variable | Default | Description |
 |---|---|---|
 | `MAX_CONCURRENT_DOWNLOADS` | `2` | Maximum concurrent downloads before queuing. |
+| `POT_PROVIDER_URL` | `http://pot-provider:4416` in Compose; `http://127.0.0.1:4416` natively | HTTP PO-token provider used by downloads, search and playlist inspection. |
 | `PUID` / `PGID` | `1000` | User/Group ID to ensure downloaded files are not locked as root. |
 | `DEFAULT_RATE_LIMIT` | `""` | Global bandwidth cap (e.g. `10M`, `2M`). |
 | `DISCORD_WEBHOOK_URL` | `""` | Default Discord webhook URL for notifications. |

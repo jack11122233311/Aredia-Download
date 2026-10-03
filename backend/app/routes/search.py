@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 import yt_dlp
 
-from app.config import COOKIES_FILE
+from app.ytdlp_config import common_ytdlp_options
 from app.downloader import format_seconds
 
 logger = logging.getLogger(__name__)
@@ -36,24 +36,13 @@ async def search_media(req: SearchRequest):
 
     search_target = f"ytsearch{req.limit}:{query}"
     
-    import shutil
-    ydl_opts = {
+    ydl_opts = common_ytdlp_options()
+    ydl_opts.update({
         "extract_flat": "in_playlist",
         "skip_download": True,
         "quiet": True,
         "no_warnings": True,
-    }
-    js_runtimes = {}
-    if shutil.which("node"):
-        js_runtimes["node"] = {}
-    if shutil.which("deno"):
-        js_runtimes["deno"] = {}
-    if js_runtimes:
-        ydl_opts["js_runtimes"] = js_runtimes
-        ydl_opts["remote_components"] = ["ejs:github"]
-    
-    if COOKIES_FILE.exists() and COOKIES_FILE.stat().st_size > 0:
-        ydl_opts["cookiefile"] = str(COOKIES_FILE)
+    })
 
     def _execute_search():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
